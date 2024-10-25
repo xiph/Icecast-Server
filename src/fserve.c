@@ -30,13 +30,9 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#define SCN_OFF_T SCNdMAX
-#define PRI_OFF_T PRIdMAX
 #else
 #include <winsock2.h>
 #include <windows.h>
-#define SCN_OFF_T "ld"
-#define PRI_OFF_T "ld"
 #ifndef S_ISREG
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
 #endif
@@ -524,8 +520,12 @@ int fserve_client_create (client_t *httpclient)
     /* full http range handling is currently not done but we deal with the common case */
     if (range != NULL) {
         ret = 0;
-        if (strncasecmp (range, "bytes=", 6) == 0)
-            ret = sscanf (range+6, "%" SCN_OFF_T "-", &rangenumber);
+        if (strncasecmp (range, "bytes=", 6) == 0) {
+            long long unsigned int in = 0;
+
+            ret = sscanf(range+6, "%llu-", &in);
+            rangenumber = in;
+        }
 
         if (ret != 1) {
             /* format not correct, so lets just assume
@@ -566,13 +566,13 @@ int fserve_client_create (client_t *httpclient)
                 }
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
                     "Accept-Ranges: bytes\r\n"
-                    "Content-Length: %" PRI_OFF_T "\r\n"
-                    "Content-Range: bytes %" PRI_OFF_T \
-                    "-%" PRI_OFF_T "/%" PRI_OFF_T "\r\n\r\n",
-                    new_content_len,
-                    rangenumber,
-                    endpos,
-                    content_length);
+                    "Content-Length: %llu\r\n"
+                    "Content-Range: bytes %llu" \
+                    "-%llu/%llu\r\n\r\n",
+                    (long long unsigned int)new_content_len,
+                    (long long unsigned int)rangenumber,
+                    (long long unsigned int)endpos,
+                    (long long unsigned int)content_length);
                 free (type);
             }
             else {
@@ -598,8 +598,8 @@ int fserve_client_create (client_t *httpclient)
         }
         bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
             "Accept-Ranges: bytes\r\n"
-            "Content-Length: %" PRI_OFF_T "\r\n\r\n",
-            content_length);
+            "Content-Length: %llu\r\n\r\n",
+            (long long unsigned int)content_length);
         free (type);
     }
     httpclient->refbuf->len = bytes;
