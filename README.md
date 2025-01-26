@@ -73,7 +73,7 @@ If you have problems with setting up Icecast, please join the
 In case you have patches or want to discuss development issues,
 please join the [Icecast developer mailing list][7] and then
 email icecast-dev@xiph.org.
-Or come and see us on irc.freenode.net, channel [#icecast][8]
+Or come and see us on irc.libera.chat, channel [#icecast][8]
 (please be patient, people are not always at their computers).
 
 [1]: http://xmlsoft.org/downloads.html
@@ -83,4 +83,4 @@ Or come and see us on irc.freenode.net, channel [#icecast][8]
 [5]: http://icecast.org/docs/
 [6]: http://lists.xiph.org/mailman/listinfo/icecast
 [7]: http://lists.xiph.org/mailman/listinfo/icecast-dev
-[8]: https://webchat.freenode.net/?channels=#icecast
+[8]: https://kiwiirc.com/nextclient/#ircs://irc.libera.chat/#icecast
