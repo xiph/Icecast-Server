@@ -346,6 +346,20 @@ AS_IF([test "x$enable_devel_logging" == "xyes"], [
   AC_DEFINE([DEVEL_LOGGING], 1, [Define to enable development logging])
 ], [enable_devel_logging="no"])
 
+AC_ARG_ENABLE([ipv6],
+  AS_HELP_STRING([--enable-ipv6],
+    [enable ipv6 support])
+)
+
+AS_IF([test "x$enable_ipv6" != "xno"], [
+  [enable_ipv6="yes"]
+  AC_DEFINE([SUPPORT_IPV6], 1, [Define to enable IPv6 support])
+], [
+  [enable_ipv6="no"]
+  AC_DEFINE([DISABLE_IPV6], 1, [Define to disable IPv6 support])
+])
+
+
 dnl Make substitutions
 AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_CPPFLAGS)
@@ -389,5 +403,6 @@ Format/Codec support:
 Features:
   YP support   : ${enable_yp}
   Client tests : ${enable_client_tests}
+  IPv6         : ${enable_ipv6}
 
 Development logging: ${enable_devel_logging}"])
