@@ -5,20 +5,20 @@
 #
 
 Summary:        Installer for MinGW Windows port of Icecast  streaming media server
-Name:           mingw32-icecast-installer
-Version:        2.4.99.3
+Name:           mingw64-icecast-installer
+Version:        2.4.99.3+2025012921+206f
 Release:        2%{?dist}
 Group:          Applications/Multimedia
 License:        GPL-2.0
 URL:            http://www.icecast.org/
-BuildRequires:  mingw32-icecast >= %{version}
-BuildRequires:  mingw32-cross-nsis
-BuildRequires:  mingw32-cross-nsis-plugin-uac
-BuildRequires:  mingw32-cross-nsis-plugin-zipdll
-BuildRequires:  mingw32-cross-nsis-plugin-nsprocess
+BuildRequires:  mingw64-icecast >= %{version}
+BuildRequires:  mingw64-cross-nsis
+BuildRequires:  mingw64-cross-nsis-plugin-uac
+BuildRequires:  mingw64-cross-nsis-plugin-zipdll
+BuildRequires:  mingw64-cross-nsis-plugin-nsprocess
 BuildRequires:  shared-mime-info
-BuildRequires:  mingw32-cross-binutils
-BuildRequires:  mingw32-filesystem >= 35
+BuildRequires:  mingw64-cross-binutils
+BuildRequires:  mingw64-filesystem >= 35
 BuildRequires:  timezone
 BuildArch:      noarch
 
@@ -38,43 +38,49 @@ and interaction.
 pwd
 mkdir -p installer/bin
 mkdir -p installer/log
-cp    %{_mingw32_bindir}/icecast.exe    installer/bin
+cp    %{_mingw64_bindir}/icecast.exe    installer/bin
 cd    installer/bin
-%{_mingw32_datadir}/icecast/win32/dllbundler.sh -h i686-w64-mingw32 icecast.exe
+%{_mingw64_datadir}/icecast/win32/dllbundler.sh -h x86_64-w64-mingw32 icecast.exe
 ls -la
 cd    ../..
 ls -la
-cp    %{_mingw32_datadir}/icecast/win32/icecast.ico       installer/bin
-cp    %{_mingw32_datadir}/icecast/win32/icecast2logo3.bmp installer
-cp    %{_mingw32_datadir}/icecast/win32/icecast2logo2.bmp installer
-cp    %{_mingw32_datadir}/icecast/win32/icecast.nsis      installer
-cp    %{_mingw32_datadir}/icecast/win32/icecast.bat       installer
-cp    %{_mingw32_datadir}/icecast/win32/icecast.xml       installer
-cp -a %{_mingw32_datadir}/icecast/*     installer/
-cp -a %{_mingw32_datadir}/doc/icecast/* installer/doc/
+cp    %{_mingw64_datadir}/icecast/win32/icecast.ico       installer/bin
+cp    %{_mingw64_datadir}/icecast/win32/icecast2logo3.bmp installer
+cp    %{_mingw64_datadir}/icecast/win32/icecast2logo2.bmp installer
+cp    %{_mingw64_datadir}/icecast/win32/icecast.nsis      installer
+cp    %{_mingw64_datadir}/icecast/win32/icecast.bat       installer
+cp    %{_mingw64_datadir}/icecast/win32/icecast.xml       installer
+cp -a %{_mingw64_datadir}/icecast/*     installer/
+cp -a %{_mingw64_datadir}/doc/icecast/* installer/doc/
 cp    /etc/mime.types   installer/
 find installer/
 %build
 cd installer
 cp icecast.nsis icecast.nsis.orig
+sed -i "s/win32/win64/g; s/Win32/Win64/g" icecast.nsis;
 sed -i "s/\(\"DisplayVersion\" \"\).*\(\"\)$/\1%{version}\2/" icecast.nsis
-sed -i 's/\(OutFile "icecast_win32_\).*\(.exe"\)$/\1%{version}\2/' icecast.nsis
+sed -i 's/\(OutFile "icecast_win64_\).*\(.exe"\)$/\1%{version}\2/' icecast.nsis
 diff -u  icecast.nsis.orig icecast.nsis || true
 export -n MALLOC_CHECK_
 export -n MALLOC_PERTURB_
 makensis icecast.nsis -V4
 
 %install
-mkdir -p "%{buildroot}/%{_mingw32_bindir}"
-cp %_builddir/installer/icecast_win32_%{version}.exe "%{buildroot}/%{_mingw32_bindir}"
+mkdir -p "%{buildroot}/%{_mingw64_bindir}"
+find %_builddir/installer/
+cp %_builddir/installer/icecast_win64_%{version}.exe "%{buildroot}/%{_mingw64_bindir}"
 
 %clean
 
 %files
 %defattr(-,root,root)
-%{_mingw32_bindir}/icecast_win32_%{version}.exe
+%{_mingw64_bindir}/icecast_win64_%{version}.exe
 
 %changelog
+* Wed Jan 29 2025 Stephan Jauernick <info@stephan-jauernick.de> - 2.4.99.3+2025012921+206f-1
+- CI Build - https://gitlab.xiph.org/stephan48/icecast-server/-/pipelines/5625
+
+
 * Sun Mar 13 2022 Philipp Schafft <lion@lion.leolix.org> - 2.4.99.3-1
 - Preparing for 2.5 beta3 aka 2.4.99.3
 

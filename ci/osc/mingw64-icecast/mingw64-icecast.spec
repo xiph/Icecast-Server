@@ -4,32 +4,32 @@
 # Parts of this file taken from original SUSE and Fedora packaging
 #
 
-%define version_archive _VERSION_ARCHIVE_
+%define version_archive 2.4.99.3
 Summary:        MinGW Windows port of Icecast streaming media server 
-Name:           mingw32-icecast
-Version:        2.4.99.3
+Name:           mingw64-icecast
+Version:        2.4.99.3+2025012921+206f
 Release:        2%{?dist}
 Group:          Applications/Multimedia
 License:        GPL-2.0
 URL:            http://www.icecast.org/
 Source0:        icecast2_%{version}.orig.tar.gz
-BuildRequires:  mingw32-cross-binutils
-BuildRequires:  mingw32-cross-gcc
-BuildRequires:  mingw32-cross-pkg-config
-BuildRequires:  mingw32-filesystem >= 35
+BuildRequires:  mingw64-cross-binutils
+BuildRequires:  mingw64-cross-gcc
+BuildRequires:  mingw64-cross-pkg-config
+BuildRequires:  mingw64-filesystem >= 35
 BuildRequires:  automake
 BuildRequires:  libtool
-BuildRequires:  mingw32-libvorbis-devel >= 1.0
-BuildRequires:  mingw32-libogg-devel >= 1.0
-BuildRequires:  mingw32-libcurl-devel
-BuildRequires:  mingw32-libxml2-devel
-BuildRequires:  mingw32-libxslt-devel
-BuildRequires:  mingw32-libspeex-devel
-BuildRequires:  mingw32-libtheora-devel >= 1.0
-BuildRequires:  mingw32-libopenssl-1_1-devel
-BuildRequires:  mingw32-libigloo-devel >= 0.9.0
-BuildRequires:  mingw32-librhash-devel >= 0.9.0
-%_mingw32_package_header_debug
+BuildRequires:  mingw64-libvorbis-devel >= 1.0
+BuildRequires:  mingw64-libogg-devel >= 1.0
+BuildRequires:  mingw64-libcurl-devel
+BuildRequires:  mingw64-libxml2-devel
+BuildRequires:  mingw64-libxslt-devel
+BuildRequires:  mingw64-libspeex-devel
+BuildRequires:  mingw64-libtheora-devel >= 1.0
+BuildRequires:  mingw64-libopenssl-1_1-devel
+BuildRequires:  mingw64-libigloo-devel >= 0.9.0
+BuildRequires:  mingw64-librhash-devel >= 0.9.0
+%_mingw64_package_header_debug
 BuildArch:      noarch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -46,28 +46,28 @@ in between.  It is very versatile in that new formats can be added
 relatively easily and supports open standards for commuincation
 and interaction.
 
-%_mingw32_debug_package
+%_mingw64_debug_package
 
 %prep
 %setup -q -n icecast-%{version_archive}
 find -name "*.html" -or -name "*.jpg" -or -name "*.png" -or -name "*.css" | xargs chmod 644
 
 %build
-echo "lt_cv_deplibs_check_method='pass_all'" >>%{_mingw32_cache}
-#PATH="%{_mingw32_bindir}:$PATH" ./autogen.sh
-MINGW32_CFLAGS="%{_mingw32_cflags}" \
-PATH="%{_mingw32_bindir}:$PATH" \
-%{_mingw32_configure} \
-  --with-curl=%{_mingw32_prefix} \
-  --disable-static --enable-shared --disable-ipv6
+echo "lt_cv_deplibs_check_method='pass_all'" >>%{_mingw64_cache}
+#PATH="%{_mingw64_bindir}:$PATH" ./autogen.sh
+mingw64_CFLAGS="%{_mingw64_cflags}" \
+PATH="%{_mingw64_bindir}:$PATH" \
+%{_mingw64_configure} \
+  --with-curl=%{_mingw64_prefix} \
+  --disable-static --enable-shared
 
-%{_mingw32_make} %{?_smp_mflags}
+%{_mingw64_make} %{?_smp_mflags}
 
 %install
-%{_mingw32_makeinstall} %{?_smp_mflags}
+%{_mingw64_makeinstall} %{?_smp_mflags}
 find %{buildroot}
-rm %{buildroot}%{_mingw32_sysconfdir}/icecast.xml
-cp -rfvp win32 %{buildroot}%{_mingw32_datadir}/icecast/win32
+rm %{buildroot}%{_mingw64_sysconfdir}/icecast.xml
+cp -rfvp win32 %{buildroot}%{_mingw64_datadir}/icecast/win32
 
 %clean
 #probably redundant?
@@ -75,12 +75,16 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%{_mingw32_bindir}/icecast.exe
-%{_mingw32_datadir}/icecast
-%{_mingw32_datadir}/doc/icecast
-#%%{_mingw32_sysconfdir}/icecast.xml
+%{_mingw64_bindir}/icecast.exe
+%{_mingw64_datadir}/icecast
+%{_mingw64_datadir}/doc/icecast
+#%%{_mingw64_sysconfdir}/icecast.xml
 
 %changelog
+* Wed Jan 29 2025 Stephan Jauernick <info@stephan-jauernick.de> - 2.4.99.3+2025012921+206f-1
+- CI Build - https://gitlab.xiph.org/stephan48/icecast-server/-/pipelines/5625
+
+
 * Sun Mar 13 2022 Philipp Schafft <lion@lion.leolix.org> - 2.4.99.3-1
 - Preparing for 2.5 beta3 aka 2.4.99.3
 

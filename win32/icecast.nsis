@@ -17,7 +17,7 @@
 
   ;Name and file
   Name "Icecast"
-  OutFile "icecast_win32_2.5-beta3.exe"
+  OutFile "icecast_win32_TOBEREPLACED.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES32\Icecast"

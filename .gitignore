@@ -63,4 +63,4 @@ config.h.in~
 
 
 # CI: OSC temp stuff
-/osc_tmp
+/osc_tmp*

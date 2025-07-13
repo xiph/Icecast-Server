@@ -1,38 +1,26 @@
 # Build Icecast - test
+variables:
+  BASE_IMAGE_REGISTRY: registry.gitlab.xiph.org/xiph/icecast-docker-images
+  DEFAULT_IMAGE: "$BASE_IMAGE_REGISTRY/alpine-icecast-server:20250126210055"
+  OSC_IMAGE: "$BASE_IMAGE_REGISTRY/alpine-osc:20250126210022"
 
 default:
-  image: alpine:3.15
-
+  image: "$DEFAULT_IMAGE"
   tags:
       - docker
-      - linux
-
-.TemplateAlpine:
-  before_script:
-  - set -xe
-  - apk update
-  - cat /etc/os*
-  - apk add musl-dev git make gcc automake autoconf libtool curl ca-certificates
-  - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev  libc6-compat rhash-dev
-  # gzip required because busybox gzip does not understand best / zip for make dist
-  - apk add gzip zip tar
-  # Required for tests
-  #- apk add curl ffmpeg
-  # Create user to run tests
-  #- adduser -s /bin/sh -D -H icecast
 
 make_dist:
-  extends: .TemplateAlpine
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
     LIBIGLOO_PACKAGE_PREFIX: "alpine-libigloo-bins"
-    LIBIGLOO_PACKAGE_VERSION: "0.91"
+    LIBIGLOO_PACKAGE_VERSION: "0.92"
     LIBIGLOO_PROJECT_ID: 143
 
   stage: build
 
   script:
     - set -xe # yes i know the scripts will be merged... but for sanities sake
+    - cat /etc/os*
     - ./autogen.sh
     - mkdir EXTRA-LIBS
     - export PKG_CONFIG_PATH=`pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig
@@ -49,6 +37,7 @@ make_dist:
     - ./configure || cat config.log
     - make
     - make dist
+    - tree
 
     # Tests
     #- su -c "./tests/admin-tests.sh" icecast
@@ -57,32 +46,12 @@ make_dist:
     untracked: true
     expire_in: 1 week
 
-upload_package:
-  extends: .TemplateAlpine
-  stage: deploy
-  variables:
-    ICECAST_SERVER_VERSION: "2.4.99.3"
-    ICECAST_SERVER_PREFIX: "alpine-icecast-server-bins"
-
-  script:
-    - make install DESTDIR=`pwd`/_install_base/
-    - cd _install_base/
-    # see above
-    - export ICECAST_SERVER_BASE=$ICECAST_SERVER_PREFIX-$CI_COMMIT_REF_NAME
-    - export ICECAST_SERVER_ARCHIVE=$ICECAST_SERVER_BASE.tar.gz
-    - export ICECAST_SERVER_VERSION_WITH_SUFFIX=$ICECAST_SERVER_VERSION-$CI_COMMIT_REF_NAME
-    - tar -cvzf ../$ICECAST_SERVER_ARCHIVE *
-    - cd ..
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $ICECAST_SERVER_ARCHIVE "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$ICECAST_SERVER_PREFIX/$ICECAST_SERVER_VERSION_WITH_SUFFIX/$ICECAST_SERVER_ARCHIVE"'  
-
-  needs:
-    - "make_dist"
-
-
 upload_dist:
+  image: "$OSC_IMAGE"
   only:
     - master
     - devel
+    - devel-stephan48-libigloo-osc
 
   stage: deploy
 
@@ -96,6 +65,7 @@ upload_dist:
     - ./ci/osc/handle-osc-upload.sh
 
 upload_dist_release:
+  image: "$OSC_IMAGE"
   only:
     - tags
 

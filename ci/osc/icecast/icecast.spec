@@ -41,7 +41,7 @@ BuildRequires: automake, pkgconfig
 BuildRequires: libvorbis-devel >= 1.0, libogg-devel >= 1.0, curl-devel >= 7.10.0
 BuildRequires: libxml2-devel, libxslt-devel, speex-devel
 # To be enabled as soon as Fedora's libtheora supports ogg_stream_init
-BuildRequires: libtheora-devel >= 1.0, openssl-devel
+BuildRequires: libtheora-devel >= 1.0, openssl-devel >= 1.1, rhash-devel, libigloo-devel >= 0.9.2
 # From suse packaging
 BuildRequires: libtool,
 
