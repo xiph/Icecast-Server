@@ -29,7 +29,7 @@ if [[ "$SHORT_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(\.([0-9]+))?$ ]]; then
   MINOR=${BASH_REMATCH[2]}
   PATCH=${BASH_REMATCH[3]}
   EXTRA=${BASH_REMATCH[5]}
-  LABEL=${EXTRA:+beta}
+  LABEL=${EXTRA:+rc}
   if [[ -n "$EXTRA" ]]; then
     ((MINOR++))
   fi
