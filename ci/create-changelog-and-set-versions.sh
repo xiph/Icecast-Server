@@ -29,7 +29,9 @@ if [[ "$SHORT_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(\.([0-9]+))?$ ]]; then
   MINOR=${BASH_REMATCH[2]}
   PATCH=${BASH_REMATCH[3]}
   EXTRA=${BASH_REMATCH[5]}
-  LABEL=${EXTRA:+rc}
+
+
+  LABEL=${EXTRA:+$SUFFIX}
   if [[ -n "$EXTRA" ]]; then
     ((MINOR++))
   fi
@@ -38,12 +40,12 @@ else
   exit 3
 fi
 
-# M.m or M.m -LABEL
-STRANGE_VERSION="${MAJOR}.${MINOR}${EXTRA:+ $LABEL$EXTRA}"
-# Mm, or Mm-beta-1
-HTML_VERSION="${MAJOR}${MINOR}${EXTRA:+-$LABEL-$EXTRA}"
-# M.m or M.m-LABEL
-WIN32_VERSION="${MAJOR}.${MINOR}${EXTRA:+-$LABEL$EXTRA}"
+# M.m.p or M.m.p -LABEL
+STRANGE_VERSION="${MAJOR}.${MINOR}.${PATCH}${EXTRA:+ $LABEL$EXTRA}"
+# Mmp, or Mmp-beta-1
+HTML_VERSION="${MAJOR}${MINOR}${PATCH}${EXTRA:+-$LABEL-$EXTRA}"
+# M.m.p or M.m.p-LABEL
+WIN32_VERSION="${MAJOR}.${MINOR}.${PATCH}${EXTRA:+-$LABEL$EXTRA}"
 
 # Name of the package names in OBS for each part. Can be overridden.
 ICECAST_PROJECT=${ICECAST_PROJECT:-icecast}
