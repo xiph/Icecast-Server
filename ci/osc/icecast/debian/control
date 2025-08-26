@@ -7,7 +7,6 @@ Build-Depends: cdbs,
  autotools-dev,
  devscripts,
  libtool,
- automake1.17 | automake1.16 | automake1.11,
  autoconf,
  debhelper,
  dh-buildinfo,
@@ -22,7 +21,9 @@ Build-Depends: cdbs,
  po-debconf,
  pkg-config,
  dh-autoreconf,
- automake
+ automake,
+ gpg,
+ gpgv
 Standards-Version: 3.9.5
 Homepage: http://www.icecast.org/
 
