@@ -4,7 +4,7 @@
 # Parts of this file taken from original SUSE and Fedora packaging
 #
 
-%define version_archive 2.4.99.3
+%define version_archive _VERSION_ARCHIVE_
 Summary:        MinGW Windows port of Icecast streaming media server 
 Name:           mingw64-icecast
 Version:        2.5.0-rc1
