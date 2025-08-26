@@ -1,3 +1,9 @@
+icecast2 (2.5.0-rc1-1) UNRELEASED; urgency=medium
+
+  * Preparing for 2.5.0-rc1
+
+ --  Philipp Schafft <lion@lion.leolix.org>  Tue, 26 Aug 2025 20:58:12 +0000
+
 icecast2 (2.4.99.3-1) UNRELEASED; urgency=medium
 
   * Preparing for 2.5 beta3 aka 2.4.99.3

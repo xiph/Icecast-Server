@@ -7,7 +7,7 @@
 %define version_archive 2.4.99.3
 Summary:        MinGW Windows port of Icecast streaming media server 
 Name:           mingw64-icecast
-Version:        2.4.99.3+2025012921+206f
+Version:        2.5.0-rc1
 Release:        2%{?dist}
 Group:          Applications/Multimedia
 License:        GPL-2.0
@@ -81,6 +81,10 @@ rm -rf %{buildroot}
 #%%{_mingw64_sysconfdir}/icecast.xml
 
 %changelog
+* Tue Aug 26 2025 Philipp Schafft <lion@lion.leolix.org> - 2.5.0-rc1-1
+- Preparing for 2.5.0-rc1
+
+
 * Wed Jan 29 2025 Stephan Jauernick <info@stephan-jauernick.de> - 2.4.99.3+2025012921+206f-1
 - CI Build - https://gitlab.xiph.org/stephan48/icecast-server/-/pipelines/5625
 

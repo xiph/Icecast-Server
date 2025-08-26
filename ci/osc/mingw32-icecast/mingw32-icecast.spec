@@ -7,7 +7,7 @@
 %define version_archive _VERSION_ARCHIVE_
 Summary:        MinGW Windows port of Icecast streaming media server 
 Name:           mingw32-icecast
-Version:        2.4.99.3
+Version:        2.5.0-rc1
 Release:        2%{?dist}
 Group:          Applications/Multimedia
 License:        GPL-2.0
@@ -81,6 +81,10 @@ rm -rf %{buildroot}
 #%%{_mingw32_sysconfdir}/icecast.xml
 
 %changelog
+* Tue Aug 26 2025 Philipp Schafft <lion@lion.leolix.org> - 2.5.0-rc1-1
+- Preparing for 2.5.0-rc1
+
+
 * Sun Mar 13 2022 Philipp Schafft <lion@lion.leolix.org> - 2.4.99.3-1
 - Preparing for 2.5 beta3 aka 2.4.99.3
 

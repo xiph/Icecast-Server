@@ -136,7 +136,7 @@ Section "Icecast" SecIcecastWin32
   WriteRegStr   HKLM $RegistryPathForUninstall "Publisher" "Xiph.org Foundation / The Icecast Project"
   WriteRegStr   HKLM $RegistryPathForUninstall "HelpLink" "http://icecast.org/contact"
   WriteRegStr   HKLM $RegistryPathForUninstall "URLInfoAbout" "http://icecast.org/"
-  WriteRegStr   HKLM $RegistryPathForUninstall "DisplayVersion" "2.5 beta3"
+  WriteRegStr   HKLM $RegistryPathForUninstall "DisplayVersion" "2.5 rc1"
   WriteRegStr   HKLM $RegistryPathForUninstall "InstallLocation" "$INSTDIR"
   WriteRegStr   HKLM $RegistryPathForUninstall "InstallDate" "$Year$Month$Day"
   WriteRegDWORD HKLM $RegistryPathForUninstall "NoModify" 0x1
