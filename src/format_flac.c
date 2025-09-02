@@ -211,10 +211,8 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
             return NULL;
         }
 
-        if (codec->headers) {
-            format_ogg_attach_header(ogg_info, page);
-            return NULL;
-        }
+        format_ogg_attach_header(ogg_info, page);
+        return NULL;
     }
 
     refbuf = make_refbuf_with_page(page);
