@@ -26,6 +26,8 @@ Icecast requires the following packages:
 -   [libxslt][2]
 -   [curl][3] (>= version 7.10 required)
 -   [ogg/vorbis][4] (>= version 1.0 required)
+-   [libigloo][5]
+-   [librhash][6]
 
 __NOTE__: Icecast may be compiled without curl, however this will
 disable Stream Directory server interaction (YP) and URL based 
@@ -66,21 +68,23 @@ also depends on path PREFIX) or in the current working directory
 Documentation for Icecast is available in the doc directory, by 
 viewing `doc/index.html` in a browser. It's also installed to 
 `$PREFIX/share/doc/icecast/`. Online documentation can be found 
-on the [Icecast Website][5].
+on the [Icecast Website][7].
 
 If you have problems with setting up Icecast, please join the 
-[Icecast mailing list][6] and then email icecast@xiph.org.
+[Icecast mailing list][8] and then email icecast@xiph.org.
 In case you have patches or want to discuss development issues,
-please join the [Icecast developer mailing list][7] and then
+please join the [Icecast developer mailing list][9] and then
 email icecast-dev@xiph.org.
-Or come and see us on irc.libera.chat, channel [#icecast][8]
+Or come and see us on irc.libera.chat, channel [#icecast][10]
 (please be patient, people are not always at their computers).
 
 [1]: http://xmlsoft.org/downloads.html
 [2]: http://xmlsoft.org/XSLT/downloads.html
 [3]: http://curl.haxx.se/download.html
 [4]: http://www.vorbis.com/files
-[5]: http://icecast.org/docs/
-[6]: http://lists.xiph.org/mailman/listinfo/icecast
-[7]: http://lists.xiph.org/mailman/listinfo/icecast-dev
-[8]: https://kiwiirc.com/nextclient/#ircs://irc.libera.chat/#icecast
+[5]: https://icecast.org/download/
+[6]: http://rhash.sourceforge.net/
+[7]: http://icecast.org/docs/
+[8]: http://lists.xiph.org/mailman/listinfo/icecast
+[9]: http://lists.xiph.org/mailman/listinfo/icecast-dev
+[10]: https://kiwiirc.com/nextclient/#ircs://irc.libera.chat/#icecast
