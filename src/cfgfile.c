@@ -545,9 +545,9 @@ static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum b
         case BTR_UNKNOWN:
             configuration->config_problems |= CONFIG_PROBLEM_UNKNOWN_NODE;
             if (name) {
-                ICECAST_LOG_WARN("Unknown tag in config: %s", name);
+                ICECAST_LOG_ERROR("Unknown tag in config: %s", name);
             } else {
-                ICECAST_LOG_WARN("Unknown tag in config");
+                ICECAST_LOG_ERROR("Unknown tag in config");
             }
         break;
         case BTR_OBSOLETE:
@@ -565,28 +565,28 @@ static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum b
             configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
             if (name) {
                 if (extra) {
-                    ICECAST_LOG_WARN("Invalid content for tag: %s: %s", name, extra);
+                    ICECAST_LOG_ERROR("Invalid content for tag: %s: %s", name, extra);
                 } else {
-                    ICECAST_LOG_WARN("Invalid content for tag: %s", name);
+                    ICECAST_LOG_ERROR("Invalid content for tag: %s", name);
                 }
             } else {
-                ICECAST_LOG_WARN("Invalid content for tag");
+                ICECAST_LOG_ERROR("Invalid content for tag");
             }
         break;
         case BTR_EMPTY:
             configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
             if (name) {
-                ICECAST_LOG_WARN("Invalid empty tag: %s", name);
+                ICECAST_LOG_ERROR("Invalid empty tag: %s", name);
             } else {
-                ICECAST_LOG_WARN("Invalid empty tag");
+                ICECAST_LOG_ERROR("Invalid empty tag");
             }
         break;
         case BTR_RANGE:
             configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
             if (name) {
-                ICECAST_LOG_WARN("Value for tag is out of range: %s", name);
+                ICECAST_LOG_ERROR("Value for tag is out of range: %s", name);
             } else {
-                ICECAST_LOG_WARN("Value for tag is out of range");
+                ICECAST_LOG_ERROR("Value for tag is out of range");
             }
         break;
     }
