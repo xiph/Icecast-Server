@@ -119,7 +119,6 @@ typedef struct {
     char       *header_alter_argument;
 
     char       *userpwd;
-    CURL       *handle;
     char        errormsg[CURL_ERROR_SIZE];
     auth_result result;
 } auth_url;
@@ -144,7 +143,6 @@ static void auth_url_clear(auth_t *self)
     ICECAST_LOG_INFO("Doing auth URL cleanup");
     url = self->state;
     self->state = NULL;
-    icecast_curl_free(url->handle);
     free(url->username);
     free(url->password);
     free(url->pass_headers);
@@ -447,16 +445,21 @@ static auth_result url_add_client(auth_client *auth_user)
     client_t       *client      = auth_user->client;
     auth_t         *auth        = client->auth;
     auth_url       *url         = auth->state;
-    int             res         = 0;
-    char           *userpwd    = NULL;
+    CURLcode        res         = CURLE_OK;
+    char           *userpwd     = NULL;
+    CURL           *handle;
     string_renderer_t *renderer;
 
     if (url->addurl == NULL)
         return AUTH_OK;
 
+    handle = icecast_curl_new(NULL, &url->errormsg[0]);
+
+    curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
+
     if (strchr(url->addurl, '@') == NULL) {
         if (url->userpwd) {
-            curl_easy_setopt(url->handle, CURLOPT_USERPWD, url->userpwd);
+            curl_easy_setopt(handle, CURLOPT_USERPWD, url->userpwd);
         } else {
             /* auth'd requests may not have a user/pass, but may use query args */
             if (client->username && client->password) {
@@ -464,42 +467,48 @@ static auth_result url_add_client(auth_client *auth_user)
                 userpwd = malloc (len);
                 snprintf(userpwd, len, "%s:%s",
                     client->username, client->password);
-                curl_easy_setopt(url->handle, CURLOPT_USERPWD, userpwd);
+                curl_easy_setopt(handle, CURLOPT_USERPWD, userpwd);
             } else {
-                curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+                curl_easy_setopt(handle, CURLOPT_USERPWD, "");
             }
         }
     } else {
         /* url has user/pass but libcurl may need to clear any existing settings */
-        curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
+        curl_easy_setopt(handle, CURLOPT_USERPWD, "");
     }
 
-    if (!(renderer = url_add_params(auth_user, false)))
+    if (!(renderer = url_add_params(auth_user, false))) {
+        icecast_curl_free(handle);
         return AUTH_FAILED;
+    }
 
-    curl_easy_setopt(url->handle, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(renderer));
+    curl_easy_setopt(handle, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(renderer));
     igloo_ro_unref(&renderer);
 
-    curl_easy_setopt(url->handle, CURLOPT_URL, url->addurl);
-    curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
+    curl_easy_setopt(handle, CURLOPT_URL, url->addurl);
+    curl_easy_setopt(handle, CURLOPT_WRITEHEADER, auth_user);
     url->errormsg[0] = '\0';
 
     url->result = AUTH_FAILED;
-    res = curl_easy_perform(url->handle);
+
+    ICECAST_LOG_DEBUG("Pre-request (%s)", url->addurl);
+    res = curl_easy_perform(handle);
+    icecast_curl_free(handle);
 
     free(userpwd);
     auth_user_url_clear(auth_user);
 
-    if (res) {
-        ICECAST_LOG_WARN("auth to server %s failed with %s",
-            url->addurl, url->errormsg);
+    if (res != CURLE_OK) {
+        ICECAST_LOG_WARN("auth to server %s failed with \"% H\", (curl: %s)",
+            url->addurl, url->errormsg, curl_easy_strerror(res));
         return AUTH_FAILED;
     }
     /* we received a response, lets see what it is */
     if (url->result == AUTH_FAILED) {
-        ICECAST_LOG_INFO("client auth (%s) failed with \"%s\"",
-            url->addurl, url->errormsg);
+        ICECAST_LOG_INFO("client auth (%s) failed with \"% H\", (curl: %s)",
+            url->addurl, url->errormsg, curl_easy_strerror(res));
     }
+
     return url->result;
 }
 
@@ -581,12 +590,6 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
         options = options->next;
     }
 
-    url_info->handle = icecast_curl_new(NULL, &url_info->errormsg[0]);
-    if (url_info->handle == NULL) {
-        auth_url_clear(authenticator);
-        return -1;
-    }
-
     /* default headers */
     if (url_info->auth_header) {
         ICECAST_LOG_WARN("You use old style auth option \"auth_header\". Please switch to new style option \"header_auth\".");
@@ -607,8 +610,6 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
         url_info->auth_header_len = strlen (url_info->auth_header);
     if (url_info->timelimit_header)
         url_info->timelimit_header_len = strlen (url_info->timelimit_header);
-
-    curl_easy_setopt(url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
 
     if (url_info->username && url_info->password) {
         int len = strlen(url_info->username) + strlen(url_info->password) + 2;
