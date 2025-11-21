@@ -19,6 +19,7 @@
 
 static int event_terminate_emit(void *state, event_t *event)
 {
+    ICECAST_LOG_INFO("Terminating due to event (%s)", event->trigger);
     global.running = ICECAST_HALTING;
     return 0;
 }
