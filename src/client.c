@@ -316,10 +316,15 @@ void client_destroy(client_t *client)
     avl_tree_unlock(global_client_list);
 
     if (client->reuse != ICECAST_REUSE_CLOSE && !client->con->error) {
-        /* only reuse the client if we reached the body's EOF. */
-        if (client_body_eof(client) == 1) {
-            client_reuseconnection(client);
-            return;
+        const char * connection = httpp_getvar(client->parser, "connection");
+
+        /* check if the client asked us to close the connection. Better close it. Some clients (at least PHP) breaks otherwise */
+        if (strcasestr(connection, "close") == NULL) {
+            /* only reuse the client if we reached the body's EOF. */
+            if (client_body_eof(client) == 1) {
+                client_reuseconnection(client);
+                return;
+            }
         }
     }
 
