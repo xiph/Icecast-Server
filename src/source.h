@@ -36,6 +36,7 @@ typedef uint_least32_t source_flags_t;
 #define SOURCE_FLAG_AGED                ((source_flags_t)0x00000008U)
 #define SOURCE_FLAG_HTTP_1_0_LISTENER   ((source_flags_t)0x00000010U)
 #define SOURCE_FLAG_NOHOST_LISTENER     ((source_flags_t)0x00000020U)
+#define SOURCE_FLAG_NO_LANGUAGE         ((source_flags_t)0x00000100U)
 
 #define SOURCE_FLAGS_CLEARABLE          (SOURCE_FLAG_LEGACY_METADATA|SOURCE_FLAG_HTTP_1_0_LISTENER|SOURCE_FLAG_NOHOST_LISTENER)
 #define SOURCE_FLAGS_GOOD               (SOURCE_FLAG_GOT_DATA|SOURCE_FLAG_AGED)

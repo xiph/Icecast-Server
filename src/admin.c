@@ -585,6 +585,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged", "The stream did not mature yet.");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_HTTP_1_0_LISTENER, false, "http-1.0-listener", "Legacy HTTP/1.0 listener");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_NOHOST_LISTENER, false, "nohost-listener", "Listener without useable Host:-header");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_NO_LANGUAGE, false, "nolanguage", "No content language set");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);

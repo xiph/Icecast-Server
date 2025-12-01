@@ -1126,8 +1126,6 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
 
     source->flags &= ~SOURCE_FLAGS_CLEARABLE;
-    if (old_flags != source->flags)
-        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 
     if (mountinfo)
     {
@@ -1267,6 +1265,8 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
 
     if ((str = httpp_getvar(parser, "content-language"))) {
         stats_event(source->mount, "content-language", str);
+    } else {
+        source->flags |= SOURCE_FLAG_NO_LANGUAGE;
     }
 
     /* handle MIME-type */
@@ -1359,6 +1359,9 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
 
     if (mountinfo && mountinfo->max_history > 0)
         playlist_set_max_tracks(source->history, mountinfo->max_history);
+
+    if (old_flags != source->flags)
+        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 
     avl_tree_unlock(source->client_tree);
 }
