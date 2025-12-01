@@ -583,6 +583,8 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic", "Legacy or unsupported streaming format is used.");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata", "Legacy metadata on non-legacy source received. This is likely a bug in the source client.");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged", "The stream did not mature yet.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_HTTP_1_0_LISTENER, false, "http-1.0-listener", "Legacy HTTP/1.0 listener");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_NOHOST_LISTENER, false, "nohost-listener", "Listener without useable Host:-header");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);

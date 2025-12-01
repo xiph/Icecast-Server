@@ -30,13 +30,15 @@
 
 typedef uint_least32_t source_flags_t;
 
-#define SOURCE_FLAG_GOT_DATA        ((source_flags_t)0x00000001U)
-#define SOURCE_FLAG_FORMAT_GENERIC  ((source_flags_t)0x00000002U)
-#define SOURCE_FLAG_LEGACY_METADATA ((source_flags_t)0x00000004U)
-#define SOURCE_FLAG_AGED            ((source_flags_t)0x00000008U)
+#define SOURCE_FLAG_GOT_DATA            ((source_flags_t)0x00000001U)
+#define SOURCE_FLAG_FORMAT_GENERIC      ((source_flags_t)0x00000002U)
+#define SOURCE_FLAG_LEGACY_METADATA     ((source_flags_t)0x00000004U)
+#define SOURCE_FLAG_AGED                ((source_flags_t)0x00000008U)
+#define SOURCE_FLAG_HTTP_1_0_LISTENER   ((source_flags_t)0x00000010U)
+#define SOURCE_FLAG_NOHOST_LISTENER     ((source_flags_t)0x00000020U)
 
-#define SOURCE_FLAGS_CLEARABLE      (SOURCE_FLAG_LEGACY_METADATA)
-#define SOURCE_FLAGS_GOOD           (SOURCE_FLAG_GOT_DATA|SOURCE_FLAG_AGED)
+#define SOURCE_FLAGS_CLEARABLE          (SOURCE_FLAG_LEGACY_METADATA|SOURCE_FLAG_HTTP_1_0_LISTENER|SOURCE_FLAG_NOHOST_LISTENER)
+#define SOURCE_FLAGS_GOOD               (SOURCE_FLAG_GOT_DATA|SOURCE_FLAG_AGED)
 
 struct source_tag {
     mutex_t lock;
