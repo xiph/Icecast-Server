@@ -4,7 +4,7 @@
         <div class="mountnav">
             <ul class="boxnav">
                 <li><a href="/admin/stats.xsl?mount={$mount}#mount-1">Details</a></li>
-                <li><a href="/admin/listclients.xsl?mount={$mount}">Clients</a></li>
+                <li><a href="/admin/listclients.xsl?mount={$mount}">Listeners</a></li>
                 <li><a href="/admin/moveclients.xsl?mount={$mount}">Move listeners</a></li>
                 <li><a href="/admin/updatemetadata.xsl?mount={$mount}">Metadata</a></li>
                 <li><a href="/admin/fallbacks.xsl?mount={$mount}&amp;omode=strict">Set fallback</a></li>
