@@ -339,13 +339,13 @@ aside {
     background-color: #cccccc;
 }
 
-.barmeter > *:first-child {
-    float: right;
-    display: inline;
+.bartable td:last-child {
+    width: min-content;
+    white-space: nowrap;
 }
-.barmeter > *:nth-child(2) {
-    background: #4f8cb0;
-    display: block;
+
+meter {
+    width: 100%;
 }
 
 .maintenance-container {

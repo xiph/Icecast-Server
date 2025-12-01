@@ -18,17 +18,15 @@
                         </div>
                         <div>
                             <h4>Current load</h4>
-                            <table class="table-block">
+                            <table class="table-block bartable">
                                 <tbody>
                                     <xsl:for-each select="value[@member='global-current']/value">
                                         <tr>
                                             <xsl:variable name="member" select="@member" />
                                             <xsl:variable name="of" select="../../value[@member='global-config']/value[@member=$member]/@value" />
                                             <td><xsl:value-of select="concat(translate(substring(@member, 1, 1), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), substring(@member, 2))" /></td>
-                                            <td class="barmeter">
-                                                <span><xsl:value-of select="@value" /> of <xsl:value-of select="$of" /></span>
-                                                <div style="width: calc(100% * {@value} / {$of});">&#160;</div>
-                                            </td>
+                                            <td><meter min="0" max="{$of}" value="{@value}"></meter></td>
+                                            <td><xsl:value-of select="@value" /> of <xsl:value-of select="$of" /></td>
                                         </tr>
                                     </xsl:for-each>
                                 </tbody>
