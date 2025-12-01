@@ -252,13 +252,7 @@ static inline void source_startup(client_t *client)
                 expectcontinue = httpp_getvar (source->parser, "expect");
 
                 if (expectcontinue != NULL) {
-#ifdef HAVE_STRCASESTR
-                    if (strcasestr (expectcontinue, "100-continue") != NULL)
-#else
-                    ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
-                    if (strstr (expectcontinue, "100-continue") != NULL)
-#endif
-                    {
+                    if (util_strcasestr(expectcontinue, "100-continue") != NULL) {
                         status_to_send = 100;
                     }
                 }

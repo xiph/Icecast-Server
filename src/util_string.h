@@ -37,4 +37,10 @@ int util_strtolower(char *str);
 /* Supports wildcards, supports negatives matches. */
 bool util_is_in_list(const char *list, const char *needle);
 
+#ifdef HAVE_STRCASESTR
+#define util_strcasestr(haystack,needle) strcasestr((haystack), (needle))
+#else
+const char *util_strcasestr(const char *haystack, const char *needle);
+#endif
+
 #endif  /* __UTIL_STRING_H__ */

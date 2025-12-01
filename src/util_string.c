@@ -342,3 +342,49 @@ bool util_is_in_list(const char *list, const char *needle)
 
     return false;
 }
+
+#ifndef HAVE_STRCASESTR
+const char *util_strcasestr(const char *haystack, const char *needle) {
+    if (!haystack || !needle)
+        return NULL;
+
+    for (const char *start = haystack; *start; start++) {
+        const char *p = start;
+        const char *c = needle;
+        char cc = 1;
+
+        while (true) {
+            char cp = *(p++);
+
+            cc = *(c++);
+
+            if (cp == cc)
+                continue;
+
+            if (!cc)
+                break;
+
+            if (!cp) {
+                cc = 1;
+                break;
+            }
+
+            if (cp >= 'A' && cp <= 'Z')
+                cp = cp - 'A' + 'a';
+
+            if (cc >= 'A' && cc <= 'Z')
+                cc = cc - 'A' + 'a';
+
+            if (cp != cc) {
+                cc = 1;
+                break;
+            }
+        }
+
+        if (!cc)
+            return start;
+    }
+
+    return NULL;
+}
+#endif

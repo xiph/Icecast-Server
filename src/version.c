@@ -104,6 +104,9 @@ const char * const * version_get_compiletime_flags(void)
 #ifdef HAVE_FTRUNCATE
         "ftruncate",
 #endif
+#ifdef HAVE_STRCASESTR
+        "strcasestr",
+#endif
         /* ---[ OS ]--- */
 #ifdef WIN32
         "win32",
