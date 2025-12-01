@@ -319,7 +319,7 @@ void client_destroy(client_t *client)
         const char * connection = httpp_getvar(client->parser, "connection");
 
         /* check if the client asked us to close the connection. Better close it. Some clients (at least PHP) breaks otherwise */
-        if (util_strcasestr(connection, "close") == NULL) {
+        if (connection && util_strcasestr(connection, "close") == NULL) {
             /* only reuse the client if we reached the body's EOF. */
             if (client_body_eof(client) == 1) {
                 client_reuseconnection(client);
