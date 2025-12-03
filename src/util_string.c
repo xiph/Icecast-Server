@@ -358,8 +358,11 @@ const char *util_strcasestr(const char *haystack, const char *needle) {
 
             cc = *(c++);
 
-            if (cp == cc)
+            if (cp == cc) {
+                if (cp == 0)
+                    return start;
                 continue;
+            }
 
             if (!cc)
                 break;
