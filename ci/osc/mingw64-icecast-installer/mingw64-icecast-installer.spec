@@ -61,6 +61,7 @@ cp icecast.nsis icecast.nsis.orig
 sed -i "s/win32/win64/g; s/Win32/Win64/g" icecast.nsis;
 sed -i "s/\(\"DisplayVersion\" \"\).*\(\"\)$/\1%{version}\2/" icecast.nsis
 sed -i 's/\(OutFile "icecast_win64_\).*\(.exe"\)$/\1%{version}\2/' icecast.nsis
+sed -i 's/PROGRAMFILES32/PROGRAMFILES64/' icecast.nsis
 diff -u  icecast.nsis.orig icecast.nsis || true
 export -n MALLOC_CHECK_
 export -n MALLOC_PERTURB_
