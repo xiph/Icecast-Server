@@ -20,6 +20,7 @@ BuildRequires:  shared-mime-info
 BuildRequires:  mingw32-cross-binutils
 BuildRequires:  mingw32-filesystem >= 35
 BuildRequires:  timezone
+BuildRequires:  zip
 BuildArch:      noarch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}
@@ -65,15 +66,22 @@ export -n MALLOC_CHECK_
 export -n MALLOC_PERTURB_
 makensis icecast.nsis -V4
 
+cd ..
+ln -s installer icecast_win32_%{version}
+zip -r installer/icecast_win32_%{version}.zip icecast_win32_%{version}/{bin,doc,log,admin,web,icecast.xml,icecast.bat,mime.types}
+
 %install
 mkdir -p "%{buildroot}/%{_mingw32_bindir}"
+find %_builddir/installer/
 cp %_builddir/installer/icecast_win32_%{version}.exe "%{buildroot}/%{_mingw32_bindir}"
+cp %_builddir/installer/icecast_win32_%{version}.zip "%{buildroot}/%{_mingw32_bindir}"
 
 %clean
 
 %files
 %defattr(-,root,root)
 %{_mingw32_bindir}/icecast_win32_%{version}.exe
+%{_mingw32_bindir}/icecast_win32_%{version}.zip
 
 %changelog
 * Tue Aug 26 2025 Philipp Schafft <lion@lion.leolix.org> - 2.5.0-rc1-1
