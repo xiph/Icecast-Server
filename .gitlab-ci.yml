@@ -51,6 +51,7 @@ upload_dist:
   only:
     - master
     - devel
+    - devel-phschafft
     - devel-stephan48-libigloo-osc
 
   stage: deploy

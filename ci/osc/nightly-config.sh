@@ -3,8 +3,10 @@ if [ "z$OBS_BASES" = "z" ]; then
     export OBS_BASES=$OBS_BASE_NIGHTLY_MASTER
   elif [ "$GIT_BRANCH" = "devel" ]; then
     export OBS_BASES=$OBS_BASE_NIGHTLY_DEVEL
+  elif [ "$GIT_BRANCH" = "devel-phschafft" ]; then
+    export OBS_BASES=$OBS_BASE_NIGHTLY_DEVEL_PHSCHAFFT
   else
-    echo "branch '$GIT_BRANCH' is not master or devel, please export OBS_BASES accordingly";
+    echo "branch '$GIT_BRANCH' is not master, devel or devel-phschafft, please export OBS_BASES accordingly";
     exit 1
   fi
 fi
