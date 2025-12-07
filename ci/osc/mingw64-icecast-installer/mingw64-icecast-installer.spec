@@ -52,6 +52,7 @@ cp    %{_mingw64_datadir}/icecast/win32/icecast.bat       installer
 cp    %{_mingw64_datadir}/icecast/win32/icecast.xml       installer
 cp -a %{_mingw64_datadir}/icecast/*     installer/
 cp -a %{_mingw64_datadir}/doc/icecast/* installer/doc/
+touch installer/log/.keep
 cp    /etc/mime.types   installer/
 find installer/
 %build

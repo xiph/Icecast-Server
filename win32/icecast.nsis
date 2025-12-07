@@ -105,6 +105,7 @@ Section "Icecast" SecIcecastWin32
   File /r "doc"
   File /r "web"
   File /r "admin"
+  File /r "log"
   File "mime.types"
   File "icecast.bat"
   ;OMG my eyes, why is Goto inherent
@@ -158,10 +159,6 @@ Section "Icecast" SecIcecastWin32
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Icecast documentation.lnk" "$INSTDIR\doc\index.html"
 
   !insertmacro MUI_STARTMENU_WRITE_END
-
-  ;Create logging directory
-  CreateDirectory "$INSTDIR\log"
-
 SectionEnd
 
 ;--------------------------------
