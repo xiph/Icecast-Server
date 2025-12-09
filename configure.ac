@@ -337,6 +337,22 @@ AS_IF([test "$with_default_config" != "no"], [
   
 ])
 
+AC_ARG_WITH([build-info],
+  AS_HELP_STRING([--with-build-info=INFO],
+    [Sets the build info (a free form string) to be used along the version]),
+  [], [with_build_info=no]
+)
+
+AS_IF([test "$with_build_info" != "no"], [
+
+  AS_IF([test "$with_build_info" = "yes"], [
+    AC_MSG_ERROR([You need to supply a path as value for --with-build-info])
+  ])
+
+  AC_DEFINE_UNQUOTED([ICECAST_BUILD_INFO], ["$with_build_info"], [Define to build info])
+  
+])
+
 AC_ARG_ENABLE([devel-logging],
   AS_HELP_STRING([--enable-devel-logging],
     [enable development logging (default: disabled)])

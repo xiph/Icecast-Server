@@ -1988,6 +1988,9 @@ static void command_version             (client_t *client, source_t *source, adm
     reportxml_node_add_child(incident, resource);
 
     reportxml_helper_add_value_string(resource, "version", ICECAST_VERSION_STRING);
+#ifdef ICECAST_BUILD_INFO
+    reportxml_helper_add_value_string(resource, "build-info", ICECAST_BUILD_INFO);
+#endif
     reportxml_helper_add_value_int(resource, "address-bits", sizeof(void*)*8);
 
 #ifdef HAVE_SYS_SELECT_H

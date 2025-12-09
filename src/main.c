@@ -245,6 +245,9 @@ static void show_version(bool full)
 
         printf("\n");
 
+#ifdef ICECAST_BUILD_INFO
+        printf("Build info: %s\n", ICECAST_BUILD_INFO);
+#endif
         printf("Address bits: %u\n", (unsigned int)sizeof(void*)*8);
 #ifdef HAVE_SYS_SELECT_H
         printf("fd set size: %u entries\n", (unsigned int)FD_SETSIZE);
