@@ -1112,7 +1112,9 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
 
         /* at least a couple of players (fb2k/winamp) are reported to send a
          * host header but without the port number. So if we are missing the
-         * port then lets treat it as if no host line was sent */
+         * port then lets treat it as if no host line was sent.
+         * It is also expected that any client using an IPv6 address here is
+         * either broken beyond repair or not affected. */
         if (host && strchr(host, ':') == NULL)
             host = NULL;
 

@@ -57,6 +57,7 @@ static bool _handle_resources(client_t *client, char **uri)
     if (http_host) {
         vhost = strdup(http_host);
         if (vhost) {
+            /* TODO: This may not work correctly for IPv6 addresses. */
             vhost_colon = strstr(vhost, ":");
             if (vhost_colon)
                 *vhost_colon = 0;
