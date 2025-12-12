@@ -1895,6 +1895,10 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "0f6f757d-52d8-4b9a-8e57-9bcd528fffba", "error", "Invalid tags are used in the config file. See the error.log for details and update your configuration accordingly.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_VALIDATION)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "8fc33086-274d-4ccb-b32f-599b3fa0f41a", "error", "The configuration did not validate. See the error.log for details and update your configuration accordingly.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_FILE_PERMISSION)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "269e25fe-f16f-41a1-b826-4088b1b3fc23", "error", "File permissions are wrong. See the error.log for details and update your configuration accordingly. Future versions of Icecast may reject affected files.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_UNSAFE_FILE)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "d810fa47-9d6a-4ff9-8d1b-854a75058866", "error", "Potentially unsafe file permissions. See the error.log for details and update your configuration accordingly. Future versions of Icecast may reject affected files.", NULL);
 
     if (config->chroot) {
 #if HAVE_CHROOT
@@ -2053,6 +2057,8 @@ static void command_version             (client_t *client, source_t *source, adm
     reportxml_helper_add_value_flag(rflags, "cfgp-node-obsolete", icecast_config->config_problems & CONFIG_PROBLEM_OBSOLETE_NODE);
     reportxml_helper_add_value_flag(rflags, "cfgp-node-invalid", icecast_config->config_problems & CONFIG_PROBLEM_INVALID_NODE);
     reportxml_helper_add_value_flag(rflags, "cfgp-validation", icecast_config->config_problems & CONFIG_PROBLEM_VALIDATION);
+    reportxml_helper_add_value_flag(rflags, "cfgp-file-permission", icecast_config->config_problems & CONFIG_PROBLEM_FILE_PERMISSION);
+    reportxml_helper_add_value_flag(rflags, "cfgp-unsafe-file", icecast_config->config_problems & CONFIG_PROBLEM_UNSAFE_FILE);
     config_release_config();
 
     reportxml_node_set_attribute(dependencies, "type", "structure");

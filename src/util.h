@@ -128,4 +128,18 @@ int get_line(FILE *file, char *buf, size_t siz);
 /* returns true on success, when returning false buffer[] is in undefined state. */
 bool util_interpolation_uuid(char * buffer, size_t bufferlen, const char *in);
 
+/* test for file modes */
+/* Returns true if any of the tests fail, also will log to error log */
+
+#define UTIL_TEST_FILE_MODE_NO_EXEC      ((uint32_t)0x00000001)
+#define UTIL_TEST_FILE_MODE_NO_PUB_WRITE ((uint32_t)0x00000002)
+#define UTIL_TEST_FILE_MODE_NO_PUB_READ  ((uint32_t)0x00000004)
+#define UTIL_TEST_FILE_MODE_DEFAULTS     ((uint32_t)0x80000000)
+
+#ifndef _WIN32
+bool util_test_file_modes(const char *filename, uint32_t tests);
+#else
+#define util_test_file_modes(filename,tests) false
+#endif
+
 #endif  /* __UTIL_H__ */

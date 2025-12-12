@@ -1081,6 +1081,55 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
     }
 #endif
 
+    if (util_test_file_modes(filename, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION|CONFIG_PROBLEM_UNSAFE_FILE;
+    }
+
+    /*
+     * Access, error, and playlist logs are relative files, or even "-", so we exclude them here for now.
+    if (util_test_file_modes(configuration->access_log, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->error_log, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->playlist_log, UTIL_TEST_FILE_MODE_NO_EXEC)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+    */
+
+    if (util_test_file_modes(configuration->log_dir, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->pidfile, UTIL_TEST_FILE_MODE_NO_EXEC|UTIL_TEST_FILE_MODE_NO_PUB_WRITE)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->banfile, UTIL_TEST_FILE_MODE_NO_EXEC)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->allowfile, UTIL_TEST_FILE_MODE_NO_EXEC)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (util_test_file_modes(configuration->geoipdbfile, UTIL_TEST_FILE_MODE_NO_EXEC)) {
+        configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION;
+    }
+
+    if (configuration->tls_context.key_file) {
+        if (util_test_file_modes(configuration->tls_context.key_file, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+            configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION|CONFIG_PROBLEM_UNSAFE_FILE;
+        }
+    } else {
+        if (util_test_file_modes(configuration->tls_context.cert_file, UTIL_TEST_FILE_MODE_DEFAULTS)) {
+            configuration->config_problems |= CONFIG_PROBLEM_FILE_PERMISSION|CONFIG_PROBLEM_UNSAFE_FILE;
+        }
+    }
+
     return 0;
 }
 

@@ -32,6 +32,7 @@
 #ifndef _WIN32
 #include <sys/time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #ifdef HAVE_POLL
 #include <poll.h>
 #endif
@@ -1354,3 +1355,53 @@ bool util_interpolation_uuid(char * buffer, size_t bufferlen, const char *in)
     }
     return false;
 }
+
+#ifndef _WIN32
+bool util_test_file_modes(const char *filename, uint32_t tests) {
+    struct stat st;
+    bool ret = false;
+
+    if (!filename || !*filename)
+        return false;
+
+    if (stat(filename, &st) != 0) {
+        ICECAST_LOG_WARN("Requesting file status for % #H failed", filename);
+        return false;
+    }
+
+    if (S_ISREG(st.st_mode)) {
+        if (tests & UTIL_TEST_FILE_MODE_DEFAULTS)
+            tests |= UTIL_TEST_FILE_MODE_NO_EXEC|UTIL_TEST_FILE_MODE_NO_PUB_READ;
+    } else if (S_ISDIR(st.st_mode)) {
+        if (tests & UTIL_TEST_FILE_MODE_DEFAULTS)
+            tests |= UTIL_TEST_FILE_MODE_NO_PUB_WRITE;
+    } else {
+        ICECAST_LOG_WARN("File % #H is a strange type of file", filename);
+        if (tests & UTIL_TEST_FILE_MODE_DEFAULTS)
+            tests |= UTIL_TEST_FILE_MODE_NO_EXEC|UTIL_TEST_FILE_MODE_NO_PUB_READ|UTIL_TEST_FILE_MODE_NO_PUB_WRITE;
+    }
+
+    if (tests & UTIL_TEST_FILE_MODE_NO_EXEC) {
+        if (st.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
+            ICECAST_LOG_ERROR("File % #H has execute permission. This is insecure. Future versions of Icecast may reject this file.", filename);
+            ret = true;
+        }
+    }
+
+    if (tests & UTIL_TEST_FILE_MODE_NO_PUB_READ) {
+        if (st.st_mode & S_IROTH) {
+            ICECAST_LOG_ERROR("File % #H has world read permission. This might be insecure. Future versions of Icecast may reject this file.", filename);
+            ret = true;
+        }
+    }
+
+    if (tests & UTIL_TEST_FILE_MODE_NO_PUB_WRITE) {
+        if (st.st_mode & S_IWOTH) {
+            ICECAST_LOG_ERROR("File % #H has world write permission. This might be insecure. Future versions of Icecast may reject this file.", filename);
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+#endif

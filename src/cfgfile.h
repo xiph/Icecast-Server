@@ -38,6 +38,8 @@
 #define CONFIG_PROBLEM_OBSOLETE_NODE    0x0020U
 #define CONFIG_PROBLEM_INVALID_NODE     0x0040U
 #define CONFIG_PROBLEM_VALIDATION       0x0080U
+#define CONFIG_PROBLEM_FILE_PERMISSION  0x0100U
+#define CONFIG_PROBLEM_UNSAFE_FILE      0x0200U
 
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
