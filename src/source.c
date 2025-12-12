@@ -480,7 +480,7 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, 
             }
         }
 
-        ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
+        ICECAST_LOG_INFO("passing %lu listeners from % #H to % #H", count, source->mount, dest->mount);
 
         source->listeners -= count;
         stats_event_sub(source->mount, "listeners", count);
