@@ -125,7 +125,7 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
 
 int get_line(FILE *file, char *buf, size_t siz);
 
-/* returns true on successi, when returning false buffer[] is in undefined state. */
+/* returns true on success, when returning false buffer[] is in undefined state. */
 bool util_interpolation_uuid(char * buffer, size_t bufferlen, const char *in);
 
 #endif  /* __UTIL_H__ */
