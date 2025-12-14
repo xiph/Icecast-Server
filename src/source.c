@@ -883,7 +883,6 @@ void source_main (source_t *source)
         old_flags = source->flags;
         while (client_node) {
             client_t *client = (client_t *)client_node->key;
-            http_parser_t *parser = client->parser;
 
             if(source->max_listeners != -1 &&
                     source->listeners >= (unsigned long)source->max_listeners)
@@ -910,9 +909,10 @@ void source_main (source_t *source)
             event_emit_va("source-listener-attach", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, client, EVENT_EXTRA_LIST_END);
 
             {
-                const char *protocol = httpp_getvar(client->parser, HTTPP_VAR_PROTOCOL);
-                const char *version = httpp_getvar(client->parser, HTTPP_VAR_VERSION);
-                const char *http_host = httpp_getvar(client->parser, "host");
+                http_parser_t *parser = client->parser;
+                const char *protocol = httpp_getvar(parser, HTTPP_VAR_PROTOCOL);
+                const char *version = httpp_getvar(parser, HTTPP_VAR_VERSION);
+                const char *http_host = httpp_getvar(parser, "host");
 
                 if (protocol && version) {
                     if (strcasecmp(protocol, "HTTP") == 0 && strcmp(version, "1.0") == 0) {
