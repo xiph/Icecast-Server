@@ -229,8 +229,11 @@ section.box h5 {
     /*color: #DDD;*/
 }
 
-section.box h3 {
+section.box h3, section.box .maintenance h4 {
     border-bottom: 2px #888 solid;
+}
+section.box .help {
+    float: right;
 }
 
 section.box .box_title {

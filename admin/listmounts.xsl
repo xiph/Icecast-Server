@@ -24,14 +24,17 @@
                             <p><xsl:value-of select="listeners" /> Listener(s)</p>
 
                             <xsl:if test="maintenance/*">
-                                <h4>Maintenance</h4>
-                                <ul class="maintenance-container">
-                                    <xsl:for-each select="maintenance/*">
-                                        <li class="maintenance-level-{@maintenance-level}">
-                                            <p><xsl:value-of select="text()" /></p>
-                                        </li>
-                                    </xsl:for-each>
-                                </ul>
+                                <div class="maintenance">
+                                    <div class="help"><a href="https://wiki.xiph.org/Icecast_Server/2.5_Maintenance">Help</a></div>
+                                    <h4>Maintenance</h4>
+                                    <ul class="maintenance-container">
+                                        <xsl:for-each select="maintenance/*">
+                                            <li class="maintenance-level-{@maintenance-level}">
+                                                <p><xsl:value-of select="text()" /></p>
+                                            </li>
+                                        </xsl:for-each>
+                                    </ul>
+                                </div>
                             </xsl:if>
 
                             <!-- Mount Authentication -->

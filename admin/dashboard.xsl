@@ -37,6 +37,7 @@
             </xsl:for-each>
         </xsl:for-each>
         <section class="box">
+            <div class="help"><a href="https://wiki.xiph.org/Icecast_Server/2.5_Maintenance">Help</a></div>
             <h3 class="box_title">Maintenance</h3>
             <xsl:choose>
                 <xsl:when test="/report/incident/state/text">
