@@ -1,3 +1,38 @@
+:root {
+    --colour-blackish: #23282c;
+    --colour-whiteish: #DDD;
+    --colour-nobox-text: #001826;
+    --colour-box-background: #F5F5F5;
+    --colour-hover: #cccccc;
+    --colour-text: #000;
+    --colour-table-sep: #e7e7e7;
+
+    --colour-traffic-red: red;
+    --colour-traffic-yellow: yellow;
+    --colour-traffic-green: limegreen;
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: black;
+    }
+    :root {
+        --colour-nobox-text: var(--colour-whiteish);
+        --colour-box-background: var(--colour-blackish);
+
+        --colour-hover: #888;
+        --colour-text: #cccccc;
+        --colour-table-sep: #545b5e;
+
+        --colour-traffic-red: #a04040;
+        --colour-traffic-yellow: #b0b049;
+        --colour-traffic-green: #40a040;
+    }
+    section.box, a, a:active, a:visited {
+        color: #868481;
+    }
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -22,7 +57,7 @@ body > main {
 
 #main-nav {
     display: block;
-    background: #23282c;
+    background: var(--colour-blackish);
     overflow: hidden;
     padding: 0.5em 2.5em;
     border-bottom: 2px #29495C solid;
@@ -32,7 +67,7 @@ body > main {
     font: normal 16px -apple-system, sans-serif;
     vertical-align: middle;
     display: inline;
-    color: #DDD;
+    color: var(--colour-whiteish);
     margin: 0;
 }
 
@@ -64,11 +99,11 @@ body > main {
     font: normal 16px -apple-system, sans-serif;
     position: relative;
     line-height: 32px;
-    color: #DDD;
+    color: var(--colour-whiteish);
 }
 
 #main-nav > ul > li > a:hover {
-    color: #FFF;
+    color: var(--colour-hover);
 }
 
 /* Fancy animation */
@@ -217,8 +252,8 @@ ul.playlists > li > a::before {
 
 section.box {
     padding: 1em;
-    background: #F5F5F5;
-    border: 1px #DDD solid;
+    background: var(--colour-box-background);
+    border: 1px var(--colour-whiteish) solid;
     margin-bottom: 1em;
 }
 
@@ -255,11 +290,12 @@ section.box table tr:first-child {
 }
 
 section.box table tr {
-    border-top: 1px solid #e7e7e7;
+    border-top: 1px solid var(--colour-table-sep);
 }
 
 section.box table tbody tr:hover {
-    background-color: #cccccc;
+    background-color: var(--colour-hover);
+    color: var(--colour-text);
 }
 
 section.box table tr td {
@@ -297,7 +333,7 @@ footer {
     padding: 0.25em 1em;
     color: #CCC;
     text-align: center;
-    background: #23282c;
+    background: var(--colour-blackish);
 }
 
 footer a {
@@ -307,7 +343,7 @@ footer a {
 /* General elements styling */
 
 h1, h2, h3, h5 {
-    color: #001826;
+    color: var(--colour-nobox-text);
 }
 
 aside {
@@ -339,7 +375,8 @@ aside {
 }
 
 .codeblock > li > pre:hover {
-    background-color: #cccccc;
+    background-color: var(--colour-hover);
+    color: var(--colour-text);
 }
 
 .bartable td:last-child {
@@ -392,15 +429,15 @@ meter {
 }
 
 .colour-red {
-    background: red;
+    background: var(--colour-traffic-red);
 }
 
 .colour-yellow {
-    background: yellow;
+    background: var(--colour-traffic-yellow);
 }
 
 .colour-green {
-    background: limegreen;
+    background: var(--colour-traffic-green);
 }
 
 /* Error messages */
