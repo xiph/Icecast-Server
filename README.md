@@ -40,7 +40,7 @@ pre-built packages (eg rpm, deb etc).  These setups often have a runtime
 package, which is usually installed for you by default, and enables you
 to run applications that depend on them.  However if you are building
 Icecast from source then the runtime system is not enough. You will also
-need a development package named something like libxslt-devel
+need a development package named something like libxslt-devel on certain distributions like Debian and Ubuntu.
 
 Build/Install
 ---------------------------------------------------------------------
