@@ -224,6 +224,24 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
+
+static bool config_str_to_for_version(for_version_t *for_version, const char *str) {
+    if (!str || !*str) {
+        *for_version = FOR_VERSION_NONE;
+        return true;
+    }
+
+    if (strcmp(str, "2.4.4") == 0) {
+        *for_version = FOR_VERSION_2_4_4;
+    } else if (strcmp(str, "2.5.0") == 0) {
+        *for_version = FOR_VERSION_2_5_0;
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
 operation_mode config_str_to_omode(ice_config_t *configuration, xmlNodePtr node, const char *str)
 {
     if (!str || !*str)
@@ -1179,6 +1197,8 @@ ice_config_t *config_get_config_unlocked(void)
 static void _set_defaults(ice_config_t *configuration)
 {
     configuration
+        ->for_version = FOR_VERSION_NONE;
+    configuration
         ->location = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOCATION);
     configuration
         ->server_id = (char *) xmlCharStrdup(ICECAST_VERSION_STRING);
@@ -1323,6 +1343,7 @@ static void _parse_root(xmlDocPtr       doc,
                         xmlNodePtr      node,
                         ice_config_t   *configuration)
 {
+    xmlNodePtr rootnode = xmlDocGetRootElement(doc);
     char *tmp;
     char *source_password = NULL;
 
@@ -1332,6 +1353,19 @@ static void _parse_root(xmlDocPtr       doc,
         ->listen_sock->port = 8000;
     configuration
         ->listen_sock_count = 1;
+
+    if (rootnode) {
+        tmp = (char*)xmlGetProp(rootnode, XMLSTR("for-version"));
+        if (tmp) {
+            if (!config_str_to_for_version(&(configuration->for_version), tmp)) {
+                ICECAST_LOG_ERROR("Bad version given in for-version: %#H. This is bad.", tmp);
+                configuration->for_version = FOR_VERSION_NONE;
+            }
+            xmlFree(tmp);
+        } else {
+            ICECAST_LOG_ERROR("No version given via for-version. Consider setting to %#H or at least \"2.4.4\"", PACKAGE_VERSION);
+        }
+    }
 
     do {
         if (node == NULL)

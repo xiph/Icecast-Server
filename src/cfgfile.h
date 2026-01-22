@@ -41,6 +41,13 @@
 #define CONFIG_PROBLEM_FILE_PERMISSION  0x0100U
 #define CONFIG_PROBLEM_UNSAFE_FILE      0x0200U
 
+typedef enum {
+    /* versions must be in their correct order */
+    FOR_VERSION_NONE = 0, /* no version given */
+    FOR_VERSION_2_4_4,
+    FOR_VERSION_2_5_0,
+} for_version_t;
+
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
     HTTP_HEADER_TYPE_STATIC,
@@ -249,6 +256,8 @@ struct ice_config_tag {
     char *config_filename;
 
     unsigned int config_problems;
+
+    for_version_t for_version;
 
     char *location;
     char *admin;
