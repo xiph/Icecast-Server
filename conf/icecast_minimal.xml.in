@@ -5,7 +5,7 @@
      this for those who got scared away from the rather large and heavily
      commented icecast.xml.dist file.
 -->
-<icecast>
+<icecast for-version="@PACKAGE_VERSION@">
     <limits>
         <sources>2</sources>
     </limits>

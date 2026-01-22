@@ -13,7 +13,8 @@ install-data-hook:
 
 edit = sed -e 's,@pkgdatadir\@,$(pkgdatadir),g' \
 	-e 's,@localstatedir\@,$(localstatedir),g' \
-	-e 's,@PACKAGE\@,$(PACKAGE),g'
+	-e 's,@PACKAGE\@,$(PACKAGE),g' \
+	-e 's,@PACKAGE_VERSION\@,$(PACKAGE_VERSION),g'
 
 icecast.xml.dist: $(srcdir)/icecast.xml.in
 	$(edit) $(srcdir)/icecast.xml.in > icecast.xml.dist

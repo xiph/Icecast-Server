@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<icecast>
+<icecast for-version="@PACKAGE_VERSION@">
     <!-- IMPORTANT!
          Especially for inexperienced users:
          Start out by ONLY changing all passwords and restarting Icecast.

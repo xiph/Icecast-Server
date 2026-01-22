@@ -6,7 +6,7 @@
      a minimal config, check the main icecast.xml.dist file
      for a complete list of possible configuration options
 -->
-<icecast>
+<icecast for-version="@PACKAGE_VERSION@">
     <limits>
         <sources>2</sources>
     </limits>
