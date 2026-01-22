@@ -124,10 +124,11 @@ static void _print_usage(void)
 {
     printf("%s\n\n", ICECAST_VERSION_STRING);
     printf("usage: icecast [-b] -c <file>\n");
-    printf("or   : icecast {-v|--version}\n");
+    printf("or   : icecast {-v|-V|--version}\n");
     printf("options:\n");
     printf("\t-c <file>       Specify configuration file\n");
     printf("\t-v or --version Display version info\n");
+    printf("\t-V              Display verbose version info\n");
     printf("\t-b              Run icecast in the background\n");
     printf("\n");
 }
