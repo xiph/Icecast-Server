@@ -29,6 +29,9 @@
 #include "common/avl/avl.h"
 #include "icecasttypes.h"
 
+typedef uint32_t extra_config_flags_t;
+#define EXTRA_CONFIG_FLAG_NO_LISTEN     ((extra_config_flags_t)0x00000001)
+
 typedef struct ice_global_tag
 {
     listensocket_container_t *listensockets;
@@ -59,6 +62,9 @@ typedef struct ice_global_tag
     /* state */
     bool chroot_succeeded;
     bool chuid_succeeded;
+
+    /* config */
+    extra_config_flags_t extra_config_flags;
 } ice_global_t;
 
 extern ice_global_t global;

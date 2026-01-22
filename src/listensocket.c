@@ -223,7 +223,7 @@ static int listensocket_container_configure__unlocked(listensocket_container_t *
     if (!self || !config)
         return -1;
 
-    if (!config->listen_sock_count) {
+    if (!config->listen_sock_count || (global.extra_config_flags & EXTRA_CONFIG_FLAG_NO_LISTEN)) {
         __listensocket_container_clear_sockets(self);
         return 0;
     }
@@ -371,6 +371,8 @@ static listensocket_t *       listensocket_container_accept__inner(listensocket_
 
     if (!found) {
         ICECAST_LOG_ERROR("No sockets found to poll on.");
+        if (self->sockcount_cb != NULL)
+            self->sockcount_cb(0, self->sockcount_userdata);
         return NULL;
     }
 

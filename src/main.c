@@ -159,13 +159,14 @@ static void __fastevent_cb(const void *userdata, fastevent_type_t type, fasteven
 static refobject_t fastevent_reg;
 #endif
 
-static void initialize_subsystems(void)
+static void initialize_subsystems(const extra_config_flags_t extra_config_flags)
 {
     log_initialize();
     thread_initialize();
     prng_initialize();
     navigation_initialize();
     global_initialize();
+    global.extra_config_flags = extra_config_flags;
 #ifndef FASTEVENT_ENABLED
     fastevent_initialize();
     fastevent_reg = fastevent_register(FASTEVENT_TYPE_SLOWEVENT, __fastevent_cb, NULL, NULL);
@@ -277,11 +278,12 @@ static void export_database(void)
     igloo_ro_unref(&db);
 }
 
-static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
+static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size, extra_config_flags_t *extra_config_flags)
 {
     int i;
     bool config_ok = false;
 
+    *extra_config_flags = 0;
     background = false;
     if (argc < 2) {
         if (filename[0] != 0) {
@@ -321,6 +323,8 @@ static bool _parse_config_opts(int argc, char **argv, char *filename, size_t siz
         } else if (strcmp(opt, "--export-database") == 0) {
             export_database();
             exit(0);
+        } else if (strcmp(opt, "--no-listen") == 0) {
+            *extra_config_flags |= EXTRA_CONFIG_FLAG_NO_LISTEN;
         } else if (strcmp(opt, "-c") == 0) {
             if ((i + 1) < argc) {
                 strncpy(filename, argv[++i], size-1);
@@ -485,15 +489,17 @@ static void pidfile_update(ice_config_t *config, int always_try)
 }
 
 /* bind the socket and start listening */
-static int _server_proc_init(void)
+static int _server_proc_init(const extra_config_flags_t extra_config_flags)
 {
     ice_config_t *config = config_get_config_unlocked();
 
     connection_setup_sockets(config);
 
-    if (listensocket_container_sockcount(global.listensockets) < 1) {
-        ICECAST_LOG_ERROR("Can not listen on any sockets.");
-        return 0;
+    if (!(extra_config_flags & EXTRA_CONFIG_FLAG_NO_LISTEN)) {
+        if (listensocket_container_sockcount(global.listensockets) < 1) {
+            ICECAST_LOG_ERROR("Can not listen on any sockets.");
+            return 0;
+        }
     }
 
     pidfile_update(config, 1);
@@ -666,6 +672,7 @@ int main(int argc, char **argv)
 #endif
     char pbuf[1024];
     ice_config_t *config;
+    extra_config_flags_t extra_config_flags;
 
     if (igloo_initialize(&igloo_instance) != igloo_ERROR_NONE) {
         _fatal_error("FATAL: Can not initialize libigloo.");
@@ -680,10 +687,10 @@ int main(int argc, char **argv)
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    if (_parse_config_opts(argc, argv, filename, sizeof(filename))) {
+    if (_parse_config_opts(argc, argv, filename, sizeof(filename), &extra_config_flags)) {
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
-        initialize_subsystems();
+        initialize_subsystems(extra_config_flags);
         if (!_start_logging_stdout()) {
             _fatal_error("FATAL: Could not start logging on stderr.");
             shutdown_subsystems();
@@ -730,7 +737,7 @@ int main(int argc, char **argv)
     config_parse_cmdline(argc, argv);
 
     /* Bind socket, before we change userid */
-    if(!_server_proc_init()) {
+    if(!_server_proc_init(extra_config_flags)) {
         _fatal_error("Server startup failed. Exiting");
         shutdown_subsystems();
         igloo_ro_unref(&igloo_instance);
