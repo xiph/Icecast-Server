@@ -76,6 +76,7 @@ static int client_tree_changed = 0;
 
 #ifdef HAVE_POLL
 static struct pollfd *ufds = NULL;
+static size_t ufds_count = 0;
 #else
 static fd_set fds;
 static sock_t fd_max = SOCK_ERROR;
@@ -145,7 +146,16 @@ int fserve_client_waiting (void)
 
     /* only rebuild ufds if there are clients added/removed */
     if (client_tree_changed) {
-        struct pollfd *ufds_new = realloc(ufds, fserve_clients * sizeof(struct pollfd));
+        struct pollfd *ufds_new = NULL;
+
+        if (fserve_clients > ufds_count || (!ufds && !fserve_clients)) {
+            ufds_count = fserve_clients;
+            if (ufds_count < 16)
+                ufds_count = 16;
+            ufds_new = realloc(ufds, ufds_count * sizeof(struct pollfd));
+        } else {
+            ufds_new = ufds;
+        }
         /* REVIEW: If we can not allocate new ufds, keep old ones for now. */
         if (ufds_new || fserve_clients == 0) {
             ufds = ufds_new;
