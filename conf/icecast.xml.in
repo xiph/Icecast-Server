@@ -4,7 +4,7 @@
          Especially for inexperienced users:
          Start out by ONLY changing all passwords and restarting Icecast.
          For detailed setup instructions please refer to the documentation.
-         It's also available here: http://icecast.org/docs/
+         It's also available here: https://icecast.org/docs/
     -->
 
     <!-- location and admin are two strings that are e.g. visible
