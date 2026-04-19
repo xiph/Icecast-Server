@@ -771,7 +771,7 @@ const char *util_http_select_best(const char *input, const char *first, ...)
 
     kv = util_parse_http_cn(input);
     if (!kv) {
-        ICECAST_LOG_ERROR("Input string does not parse as KVA. Selecting first option.");
+        ICECAST_LOG_DERROR("Input string does not parse as KVA. Selecting first option.");
         __free_args(arg, arglen);
         return first;
     }
