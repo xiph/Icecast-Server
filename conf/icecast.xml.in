@@ -184,7 +184,7 @@
         <dump-file>/tmp/dump-example1.ogg</dump-file>
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
-        <fallback-override>true</fallback-override>
+        <fallback-override>all</fallback-override>
         <fallback-when-full>true</fallback-when-full>
         <intro>/example_intro.ogg</intro>
         <hidden>true</hidden>
