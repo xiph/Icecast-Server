@@ -1812,7 +1812,7 @@ static health_t command_dashboard__getrlimit(ice_config_t *config, reportxml_nod
 
     if (getrlimit(RLIMIT_NOFILE, &limit) == 0) {
         if (limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur != RLIM_SAVED_MAX && limit.rlim_cur != RLIM_SAVED_CUR) {
-            ICECAST_LOG_WARN("rlimit for NOFILE is %u", (unsigned int)limit.rlim_cur);
+            ICECAST_LOG_DDEBUG("rlimit for NOFILE is %u", (unsigned int)limit.rlim_cur);
             if (limit.rlim_cur < (unsigned int)(config->client_limit + config->source_limit * 3 + 24)) {
                 // We assume that we need one FD per client, at max three per source (e.g. for auth), and at max 24 additional for logfiles and similar.
                 // This is just an estimation.
