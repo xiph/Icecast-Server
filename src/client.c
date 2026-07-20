@@ -1089,6 +1089,7 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
     const listener_t *listener = NULL;
     const ice_config_t *config = NULL;
     const char *host = NULL;
+    const char *forwarded_proto = NULL;
     const char *proto = "http";
     int port = 0;
     ssize_t ret;
@@ -1145,7 +1146,15 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
         case ICECAST_TLSMODE_DISABLED:
         case ICECAST_TLSMODE_AUTO:
             switch (protocol) {
-                case ICECAST_PROTOCOL_HTTP: proto = "http"; break;
+                case ICECAST_PROTOCOL_HTTP:
+			proto = "http";
+			if (client) {
+				forwarded_proto = httpp_getvar(client->parser, "x-forwarded-proto");
+				if (forwarded_proto && strcmp(forwarded_proto, "https") == 0) {
+					proto = "https";
+				}
+			}
+			break;
                 case ICECAST_PROTOCOL_SHOUTCAST: proto = "icy"; break;
             }
             break;
