@@ -564,7 +564,11 @@ static void event_stream_event_render(event_stream_event_t *event)
                 json_renderer_begin(json, JSON_ELEMENT_TYPE_ARRAY);
                 for (size_t i = 0; i < keys[j].count; i++) {
                     const char *value = vorbis_comment_query(event->vc, name, i);
-                    json_renderer_write_string(json, value, JSON_RENDERER_FLAGS_NONE);
+                    if (!value) {
+                        ICECAST_LOG_WARN("Vorbis key without value: %#H", name);
+                    } else {
+                        json_renderer_write_string(json, value, JSON_RENDERER_FLAGS_NONE);
+                    }
                 }
                 json_renderer_end(json);
             }
