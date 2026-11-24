@@ -562,6 +562,8 @@ int fserve_client_create (client_t *httpclient)
                 if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                     client_send_error_by_id(httpclient, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                    free(type);
+                    fclose(file)
                     return -1;
                 }
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
@@ -593,6 +595,7 @@ int fserve_client_create (client_t *httpclient)
         if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error_by_id(httpclient, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+            free(type);
             fclose(file);
             return -1;
         }
